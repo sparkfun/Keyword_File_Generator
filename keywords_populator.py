@@ -120,23 +120,25 @@ def format_keyword_file(lPath, cName, functions):
     print("Checking if keywords.txt already exists.")
     if check_if_keywords_exists(lPath):
         with open("keywords.txt", 'a+') as k:
+            k.seek(0)
             for line in k:
                 if cName in line:
                     exists = True
                     break
 
-            if not exists:
+            if exists == False:
                 k.seek(0)
                 k.write("Class {} \n".format(STRING_FLAIR))
                 k.write("{}\tKEYWORD1\n".format(cName))
                 k.write("Functions {} \n".format(STRING_FLAIR))
-            
+          
             for line in k:
-                for function in functions:
-                    if function in line:
+                for i in range(len(functions)):
+                    if functions[i] in line:
+                        break
+                    elif i == len(functions) - 1:
+                        k.write("{}\tKEYWORD2\n".format(functions[i]))
                         continue
-                    else:
-                        k.write("{}\tKEYWORD2\n".format(function))
 
 
     else:
