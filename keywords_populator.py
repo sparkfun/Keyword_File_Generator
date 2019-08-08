@@ -1,6 +1,7 @@
 import os
 import sys
 import getpass
+import CppHeaderParser
 
 #(?=\s).*(?=\(.*\)) 
 
@@ -8,10 +9,6 @@ FUNCTION_END = 0
 MEMBER_OPERATOR = "::"
 FILE_PATH_OPERATOR = ":\\"
 PATH_TO_GITHUB = "C:\\Users\\{}\\Documents\\GitHub\\".format(getpass.getuser())
-LIST_OF_TYPES = ['void', 'uint8_t', 'uint16_t', 'uint32_t', 'byte',
-                        'int' , 'const', 'volatile', 'char', 'char16_t',
-                        'char32_t', 'float', 'double']  
-
 STRING_FLAIR = "=================================="
 
 def error_out(error):
@@ -42,87 +39,111 @@ def get_path_to_src_par_dir():
             error_out(0)
 
         
+def get_path_to_src_dir(pPath):
+    
+    for file in os.listdir(pPath):
+        if "src" in file:
+            return pPath + os.sep + file
 
-def verify_parent_directory(pathToParent):
-    for file in os.listdir(pathToParent):
+def verify_parent_directory(parPath):
+    for file in os.listdir(parPath):
         if "src" in file:
             return True
 
-def get_path_to_header(pathToSrc):
+def get_path_to_header(sPath):
 
-    for file in os.listdir(pathToSrc):
+    for file in os.listdir(sPath):
         if file.endswith(".h"):
-            if(confirm_header_file(pathToSrc + os.sep + file)):
-                return pathToSrc + os.sep + file
+            if(confirm_header_file(sPath + os.sep + file)):
+                return sPath + os.sep + file
             
 
-def confirm_header_file(filePath):
+def confirm_header_file(fPath):
     
-    with open(filePath, 'r') as h:
+    with open(fPath, 'r') as h:
         for line in h:
             if "class" in line:
                 return True
-                                 
+                               
+def get_header_file_name(sPath):
+    
+    for file in os.listdir(sPath):
+        if file.endswith(".h"):
+            headerFile = file
+            return headerFile
+
 def get_class_name(headerPath):
 
-    print("Checking for Class Name....")
     with open(headerPath, 'r') as h: 
         for line in h:
             if "class" in line:
                 words = line.split(' ')
                 className = words[1] 
+                if "\n" in className:
+                    className = className.rstrip('\n')
                 return className
 
-def get_functions(pathToheader, functionList):
-    
-   with open(pathToheader) as h:
-       for line in h:
+def get_functions(sPath, hName, cName, fList):
+   
+    os.chdir(sPath)
 
-           if "Private:" in line:
-                return 
+    header = CppHeaderParser.CppHeader(hName)
+    classInfo = header.classes[cName]
 
-           for type in LIST_OF_TYPES:
-               if type in line:
-                   functionLine = line.split(' ')
-                   functionName = functionLine[1]
-                   functionList.append(functionName)
+    for i in range(len(classInfo["methods"]["public"])):
+        funcName = classInfo["methods"]["public"][i]["name"]
+        if funcName == cName:
+            continue
+        elif funcName in fList:
+            continue
+        else:
+            fList.append(funcName)
 
+    return fList
 
-def check_if_keywords_exists(pathToParent):
+        
 
-    for file in os.listdir(pathToParent):
+def check_if_keywords_exists(parPath):
+
+    for file in os.listdir(parPath):
         if file == "keywords.txt":
-            print("Found") 
+            print("Keywords.txt file found.")
             return True
 
     print("Existing Keywords.txt file not found, creating new one!")
 
-def format_keyword_file(libPath, className, functions):
+def format_keyword_file(lPath, cName, functions):
 
+    os.chdir(lPath)
+    exists = False
+    
     print("Checking if keywords.txt already exists.")
-    if check_if_keywords_exists(libPath):
-        os.chdir(libPath)
+    if check_if_keywords_exists(lPath):
         with open("keywords.txt", 'a+') as k:
             for line in k:
-                if className in line:
+                if cName in line:
+                    exists = True
                     break
-                else:
-                    k.write("{}\tKEYWORD1\n".format(className))
-            k.seek(0)
+
+            if not exists:
+                k.seek(0)
+                k.write("Class {} \n".format(STRING_FLAIR))
+                k.write("{}\tKEYWORD1\n".format(cName))
+                k.write("Functions {} \n".format(STRING_FLAIR))
+            
             for line in k:
-                for function in functions: 
+                for function in functions:
                     if function in line:
-                        k.seek(0)
                         continue
                     else:
                         k.write("{}\tKEYWORD2\n".format(function))
 
+
     else:
-        os.chdir(libPath)
-        print("Keywords.txt file created.")
+        print("New keywords.txt file created.")
         with open("keywords.txt", 'w') as k:
             k.write("Class {} \n".format(STRING_FLAIR))
-            k.write("{}\tKEYWORD1\n".format(className))
+            k.write("{}\tKEYWORD1\n".format(cName))
             k.write("Functions {} \n".format(STRING_FLAIR))
             for function in functions: 
                 k.write("{}\tKEYWORD2\n".format(function))
@@ -130,24 +151,30 @@ def format_keyword_file(libPath, className, functions):
 
 
 def create_keyword_file():
-    
-    parPath     = get_path_to_src_par_dir()
-    srcPath     = parPath + "\src"
-    print("Arduino Library Path:\n{}".format(parPath))
+
+    parPath = get_path_to_src_par_dir()
+    srcPath = get_path_to_src_dir(parPath)
+    print("Arduino Library Path:\n{}\nPath to Source File:\
+          \n{}\n".format(parPath, srcPath))
 
     headerFilePath = get_path_to_header(srcPath)
-    print("Header File Path:\n{}".format(headerFilePath))
+    headerFile     = get_header_file_name(srcPath)
+    print("Header File Path:\n{}\nHeader File Name:\
+          \n{}\n".format(headerFilePath, headerFile))
 
-    className      = get_class_name(headerFilePath)
-    print("Class name found in header:\n{}".format(className))
+    className = get_class_name(headerFilePath)
+    print("Class name:\n{}".format(className))
 
     print("Getting Functions....")
     functionList = list()
-    get_functions(headerFilePath, functionList)
+    get_functions(srcPath, headerFilePath, className, functionList)
     print("Functions gathered.")
 
+    print("Creating Keyword File.")
     format_keyword_file(parPath, className, functionList)
+    print("Keywords.txt populted with class name and its' functions.")
 
 
-print("Arduino Keywords.txt File Creator")
+print("\n{}\nArduino Keywords.txt File Creator\n{}\n".format(STRING_FLAIR,
+                                                             STRING_FLAIR))
 create_keyword_file()
