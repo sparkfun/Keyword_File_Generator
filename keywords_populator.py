@@ -116,6 +116,7 @@ def format_keyword_file(lPath, cName, functions):
 
     os.chdir(lPath)
     exists = False
+    z = 0
     
     print("Checking if keywords.txt already exists.")
     if check_if_keywords_exists(lPath):
@@ -137,8 +138,11 @@ def format_keyword_file(lPath, cName, functions):
                     if functions[i] in line:
                         break
                     elif i == len(functions) - 1:
-                        k.write("{}\tKEYWORD2\n".format(functions[i]))
-                        continue
+                        k.write("{}\tKEYWORD2\n".format(functions[z]))
+                        z += 1
+                        print(z)
+                        k.seek(0)
+                        break
 
 
     else:
