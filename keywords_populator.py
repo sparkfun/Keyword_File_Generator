@@ -55,13 +55,13 @@ def get_path_to_arduino_dir():
             if (verify_arduino_directory(PATH_TO_GITHUB + userDir)):
                 return PATH_TO_GITHUB + userDir
         else:
-            error_out(0)
+            error_out(0, libData)
 
     else:
         if verify_arduino_directory(os.getcwd()): 
             return os.getcwd() 
         else:
-            error_out(0)
+            error_out(0, libData)
 
         
 def get_path_to_src_dir(pPath):
@@ -70,14 +70,14 @@ def get_path_to_src_dir(pPath):
         if "src" in file:
             return pPath + os.sep + file
     
-    error_out(1)
+    error_out(1, libData)
 
 def verify_arduino_directory(arPath):
     for file in os.listdir(arPath):
         if "src" in file:
             return True
     
-    error_out(2)
+    error_out(2, libData)
 
 def get_path_to_header(sPath):
 
@@ -94,7 +94,7 @@ def confirm_header_file(fPath):
             if "class" in line:
                 return True
     
-    error_out(3)
+    error_out(3, libData)
                                
 def get_header_file_name(sPath):
     
@@ -114,7 +114,7 @@ def get_class_name(headerPath):
                     className = className.rstrip('\n')
                 return className
     
-    error_out(4)
+    error_out(4, libData)
 
 def get_functions(sPath, hName, cName, fList):
    
