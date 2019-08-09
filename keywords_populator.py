@@ -14,7 +14,9 @@ STRING_FLAIR = "=================================="
 def error_out(error):
 
     if error == 0:
-        sys.exit("Incorrect path to the parent directory.")
+        sys.exit("Incorrect path to the Arduino Library.")
+    if error == 1:
+        sys.exit("No 'src' file found in Arduino Library Directory")
 
 def get_path_to_src_par_dir():
     
@@ -44,6 +46,8 @@ def get_path_to_src_dir(pPath):
     for file in os.listdir(pPath):
         if "src" in file:
             return pPath + os.sep + file
+    
+    error_out(1)
 
 def verify_parent_directory(parPath):
     for file in os.listdir(parPath):
@@ -116,7 +120,8 @@ def format_keyword_file(lPath, cName, functions):
 
     os.chdir(lPath)
     exists = False
-    z = 0
+    fExists = False
+    appendList = list()
     
     print("Checking if keywords.txt already exists.")
     if check_if_keywords_exists(lPath):
@@ -131,18 +136,26 @@ def format_keyword_file(lPath, cName, functions):
                 k.seek(0)
                 k.write("Class {} \n".format(STRING_FLAIR))
                 k.write("{}\tKEYWORD1\n".format(cName))
-                k.write("Functions {} \n".format(STRING_FLAIR))
-          
-            for line in k:
-                for i in range(len(functions)):
-                    if functions[i] in line:
+         
+        with open("keywords.txt", 'r') as k:
+            for function in functions:
+                fExists = False
+                k.seek(0)
+                for line in k:
+                    if function in line:
+                        fExists = True
                         break
-                    elif i == len(functions) - 1:
-                        k.write("{}\tKEYWORD2\n".format(functions[z]))
-                        z += 1
-                        print(z)
-                        k.seek(0)
-                        break
+                
+                if fExists == True:
+                   continue 
+                else:
+                    appendList.append(function)
+                    fExists = False
+    
+        with open("keywords.txt", 'a') as k:
+            for function in appendList:
+                k.write("{}\tKEYWORD2\n".format(function))
+
 
 
     else:
@@ -178,7 +191,7 @@ def create_keyword_file():
 
     print("Creating Keyword File.")
     format_keyword_file(parPath, className, functionList)
-    print("Keywords.txt populted with class name and its' functions.")
+    print("Keywords.txt populated with class name and its' functions.")
 
 
 print("\n{}\nArduino Keywords.txt File Creator\n{}\n".format(STRING_FLAIR,
