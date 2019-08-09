@@ -29,13 +29,13 @@ script as shown below.
 
 * **Method Two** 
 
-Give the entire path to the Arduino Library:
+The final method is to just pull the script into Arduino Library itself and
+call it without any arguments. 
 ![Method 2](https://github.com/sparkfun/Keyword_File_Generator/blob/master/Readme%20Images/method%202%20Run%20Script.JPG)
 
 * **Method Three**
 
-The final method is to just pull the script into Arduino Library itself and
-call it without any arguments. 
+Give the entire path to the Arduino Library:
 ![Method 3](https://github.com/sparkfun/Keyword_File_Generator/blob/master/Readme%20Images/Method3%20Run%20Script.JPG)
 
 After running the script you'll get a readout that looks like the following:
