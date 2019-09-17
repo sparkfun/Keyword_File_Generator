@@ -29,8 +29,8 @@ script as shown below.
 
 * **Method Two** 
 
-The final method is to just pull the script into Arduino Library itself and
-call it without any arguments. 
+The next method is to pull the script into Arduino Library itself (_not_ source
+("src") file) and call it without any arguments. 
 ![Method 2](https://github.com/sparkfun/Keyword_File_Generator/blob/master/Readme%20Images/method%202%20Run%20Script.JPG)
 
 * **Method Three**
