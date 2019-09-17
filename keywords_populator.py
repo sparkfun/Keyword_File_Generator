@@ -147,20 +147,29 @@ def get_functions(sPath, hName, cName, fList):
         return fList
 
 # This function gets the constants from the header file.        
-def get_constants(sPath, hName, cList):
+def get_constants_and_enums(sPath, hName, cList, eList):
 
     os.chdir(sPath)
 
     header = CppHeaderParser.CppHeader(hName)
 
+    # Ignore the protection define at the top of the list. 
     for define in header.defines: 
         if define.startswith("_"):
             continue
         cList.append(define.split(" ")[0])
 
+    # Gets each individual value within enum.
+    for i in range(len(header.enums)):
+        for x in range(len(header.enums[i]["values"])):
+            cList.append(header.enums[i]["values"][x]["name"])
+    
+    # Gets the type name of the enum.
+    for enum in header.enums:
+        eList.append(enum["name"])
+
     if len(cList) == 0:
-        print("Didn't find any constants...")
-        return cList
+        print("Didn't find any constants......no problemo, continuing.")
     else:
         return cList
 
@@ -176,14 +185,16 @@ def check_if_keywords_exists(arPath):
 
 # This creates the file after all of the class names, functions, and constants
 # have been gathered.
-def format_keyword_file(lPath, cName, functions, constants, hFile):
+def format_keyword_file(lPath, cName, functions, constants, enums, hFile):
 
     os.chdir(lPath)
     exists = False
     fExists = False
     cExists = False
+    eExists = False
     funcAppendList = list()
     constAppendList = list()
+    enumAppendList = list()
    
     # This "if" statement checks for a "keywords.txt" file. If the file exists 
     # then we take stock of what functions and constants are already there, and
@@ -219,7 +230,7 @@ def format_keyword_file(lPath, cName, functions, constants, hFile):
                     funcAppendList.append(function)
                     fExists = False
 
-            # Check for constants last -> LITERAL1
+            # Check for constants next -> LITERAL1
             for constant in constants:
                 cExists = False
                 k.seek(0)
@@ -233,6 +244,21 @@ def format_keyword_file(lPath, cName, functions, constants, hFile):
                 else:
                     constAppendList.append(constant)
                     cExists = False
+
+            # Check for enum last -> KEYWORD1
+            for enum in enums:
+                eExists = False
+                k.seek(0)
+                for line in k:
+                    if enum in line:
+                        eExists = True
+                        break
+                
+                if eExists == True:
+                   continue 
+                else:
+                    enumAppendList.append(enum)
+                    eExists = False
        
         #The lists of missing items is ready, now they are appended to file. 
         if len(funcAppendList) == 0:
@@ -242,7 +268,9 @@ def format_keyword_file(lPath, cName, functions, constants, hFile):
                 for function in funcAppendList:
                     k.write("{}\tKEYWORD2\n".format(function))
                 for constant in constAppendList:
-                    k.write("{}\tKEYWORD2\n".format(constant))
+                    k.write("{}\LITERAL1\n".format(constant))
+                for enum in enumAppendList:
+                    k.write("{}\tKEYWORD1\n".format(enum))
 
 
     
@@ -250,14 +278,17 @@ def format_keyword_file(lPath, cName, functions, constants, hFile):
     else:
         print("New keywords.txt file created.")
         with open("keywords.txt", 'w') as k:
-            k.write("Class {} \n".format(STRING_FLAIR))
+            k.write("{}\nCLASS\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
             k.write("{}\tKEYWORD1\n".format(cName))
-            k.write("Functions {} \n".format(STRING_FLAIR))
+            k.write("\n{}\nFUNCTIONS\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
             for function in functions: 
                 k.write("{}\tKEYWORD2\n".format(function))
-            k.write("Constants {} \n".format(STRING_FLAIR))
+            k.write("\n{}\nCONSTANTS\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
             for constant in constants: 
                 k.write("{}\tLITERAL1\n".format(constant))
+            k.write("\n{}\nDATA TYPES\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
+            for enum in enums: 
+                k.write("{}\tKEYWORD1\n".format(enum))
             
 
 
@@ -293,11 +324,13 @@ def create_keyword_file(lData):
 
     print("Getting Literals....") 
     constantList = list();
-    get_constants(srcPath, headerFilePath, constantList)
+    enumList = list()
+    get_constants_and_enums(srcPath, headerFilePath, constantList, enumList)
     print("Constants gathered.\n{}".format(SEPERATOR))
     
     print("Creating Keyword File.")
-    format_keyword_file(ardPath, className, functionList, constantList, headerFile)
+    format_keyword_file(ardPath, className, functionList, constantList,
+                        enumList, headerFile)
 
 
 
