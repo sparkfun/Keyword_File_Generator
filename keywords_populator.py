@@ -103,12 +103,13 @@ def confirm_header_file(fPath):
     error_out(3, libData)
                                
 # This function gets the name of the header file in the Arduino Library folder.
-def get_header_file_name(sPath):
+def get_header_file_name(sPath, hList):
     
     for file in os.listdir(sPath):
         if file.endswith(".h"):
-            headerFile = file
-            return headerFile
+            hList.append(file)
+
+    return hList
 
 # This function gets the class name from the header file.        
 def get_class_name(headerPath):
@@ -125,7 +126,7 @@ def get_class_name(headerPath):
     error_out(4, libData)
 
 # This function gets the function names from the header file.        
-def get_functions(sPath, hName, cName, fList):
+def get_functions(sPath, hName, cName, fList, hList):
    
     os.chdir(sPath)
 
@@ -185,7 +186,7 @@ def check_if_keywords_exists(arPath):
 
 # This creates the file after all of the class names, functions, and constants
 # have been gathered.
-def format_keyword_file(lPath, cName, functions, constants, enums, hFile):
+def format_keyword_file(lPath, cName, functions, constants, enums):
 
     os.chdir(lPath)
     exists = False
@@ -306,11 +307,15 @@ def create_keyword_file(lData):
 
     headerFilePath = get_path_to_header(srcPath)
     libData["Header Path"] = headerFilePath 
-    headerFile = get_header_file_name(srcPath)
-    libData["Header File"] = headerFile 
+    headerList = list()
+    headerList = get_header_file_name(srcPath, headerList)
+    libData["Header File"] = headerList 
 
-    print("Header File Path:\n{}\n{}\nHeader File Name:\
-          \n{}\n{}".format(headerFilePath, SEPERATOR, headerFile, SEPERATOR))
+    print("Header File Path:\n{}\n".format(headerFilePath, SEPERATOR))
+    print("Header Files: ")
+    for file in headerList:
+        print(file)
+    print(SEPERATOR)
 
     className = get_class_name(headerFilePath)
     libData["Class Name"] = className 
@@ -319,7 +324,7 @@ def create_keyword_file(lData):
 
     print("Getting Functions....")
     functionList = list()
-    get_functions(srcPath, headerFilePath, className, functionList)
+    get_functions(srcPath, headerFilePath, className, functionList, hList)
     print("Functions gathered.\n{}".format(SEPERATOR))
 
     print("Getting Literals....") 
@@ -330,7 +335,7 @@ def create_keyword_file(lData):
     
     print("Creating Keyword File.")
     format_keyword_file(ardPath, className, functionList, constantList,
-                        enumList, headerFile)
+                        enumList)
 
 
 
