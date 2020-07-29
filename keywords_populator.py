@@ -4,6 +4,7 @@ import argparse
 import glob
 import os
 import CppHeaderParser
+from braceexpand import braceexpand as expand
 
 # ***********************************************************************************
 #
@@ -72,8 +73,13 @@ def main():
         "LITERAL2": [],
     }
 
-    # handle all files matched by user's glob pattern
-    matches = glob.glob(args.pathspec, recursive=args.recursive)
+    # use brace expansion to further extend the possibilities of pattern matching
+    matches = []
+    specs = list(expand(args.pathspec))
+    for spec in specs:
+        matches.extend(glob.glob(spec, recursive=args.recursive))
+
+    # handle all matches from the expansion / glob pattern
     commonpath = None
     for match in matches:
         filepath = os.path.normpath(match)
@@ -85,7 +91,7 @@ def main():
         _, ext = os.path.splitext(filepath)
 
         # do not process non-header files
-        if ext != '.h':
+        if ext != '.h' and ext != '.H':
             verboseprint("ignoring non-header file: '" + filepath + "'" )
             continue
 

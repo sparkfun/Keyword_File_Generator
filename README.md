@@ -21,12 +21,16 @@ The ```keywords_populator.py``` script is used as follows:
 
 ```./keywords_populator.py [-p PATHSPEC] [-r] [--recursive] [-d DEST] [-v] [--verbose]```
 
-* **PATHSPEC**: a pattern that matches files or directories to search for keywords using ```glob.glob(PATHSPEC)``` - see Python ```glob``` module
+* **PATHSPEC**: a pattern that matches files or directories to search for keywords
   * *default*: ```'./*/*'```
+  * ```PATHSPEC``` is expanded using the ```braceexpansion``` module 
+  * all results from expansion are fed to the ```glob``` module to determine pattern matches ```glob.glob(PATHSPEC)``` - see Python ```glob``` module
+  * all pattern matches are concatenated then only header (```'*.h'``` or ```'.H'```) files are processed
 * **--recursive**: if specified the matches will be obtained using ```glob.glob(PATHSPEC, recursive=True)```
   * *default*: ```False```
 * **DEST**: the desired output path to the ```keywords.txt``` file (```DEST/keywords.txt```)
   * *default*: ```None```
+  * is not brace expanded or pattern matched - this should be a single relative or absolute path
 * **--verbose**: enable verbose output
   * *default*: ```False```
 
