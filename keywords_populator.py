@@ -1,350 +1,255 @@
+#!/usr/bin/env python
+
+import argparse
+import glob
 import os
-import sys
-import getpass
 import CppHeaderParser
+from braceexpand import braceexpand as expand
 
-FILE_PATH_OPERATOR = ":\\"
-PATH_TO_GITHUB = "C:\\Users\\{}\\Documents\\GitHub\\".format(getpass.getuser())
-STRING_FLAIR = "=================================="
-ERROR_FLAIR = "^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^"
-SUCCESS_FLAIR = "*********************"
-SEPERATOR = "-----"
-libData = dict.fromkeys(["Arduino Path", "Source Path", "Header File",
-                         "Header Path", "Class Name"])
+# ***********************************************************************************
+#
+# Example of CppHeader Usage (helps to understand what you can access and how)
+#
+# ***********************************************************************************
+def cpp_header_example_usage(headerpath):
 
-# This function prints out the errors messages defined for this script.
-def error_out(error, libData):
+    # CppHeader reveals the structure (topology, geometry, however you want to call it) of the header file
+    topology = CppHeaderParser.CppHeader(headerpath)
 
-    if error == 0:
-        print(ERROR_FLAIR)
-        sys.exit("Incorrect path to the Arduino Library.")
-    elif error == 1:
-        print(ERROR_FLAIR)
-        sys.exit("No 'src' file found in Arduino Library Directory")
-    elif error == 2:
-        print(ERROR_FLAIR)
-        sys.exit("Incorrect Arduino Library location was given, try again.")
-    elif error == 3:
-        print(ERROR_FLAIR)
-        sys.exit("No Header File found in the 'src' file.")
-    elif error == 4:
-        print(ERROR_FLAIR)
-        sys.exit("No class defined in {}.".format(libData["Header File"]))
-    elif error == 5:
-        print(ERROR_FLAIR)
-        sys.exit("No functions defined in {} class of the {} file.".format(libData["Class Name"],
-                                                                           libData["Header File"]))
-    elif error == 6:
-        print(ERROR_FLAIR)
-        sys.exit("No additional functions to add to {} file!".format(libData["Header File"]))
+    print()
+    print('--- defines ---')
+    for x in topology.defines:
+        print(x)
 
-# This functions gets the path to the Arduino Library directory through the
-# name given via command line. If no argument is provided then it checks to see
-# if the script was run from within the folder. 
-def get_path_to_arduino_dir():
-    
-    if len(sys.argv) > 1:
+    print()
+    print('--- enums ---')
+    for x in topology.enums:
+        print(x['name'])
 
-        userDir = sys.argv[1]
+    print() # note: classes include structures
+    print('--- classes (dict) ---')
+    for key, val in topology.classes.items():
+        print('val equals dictionary accessed by key? ', end='')
+        print(val == topology.classes[key])
+        print('keys available within this struct/class: ')
+        for k, v in val.items():
+            print('\t', end='')
+            print(k)
+        print('value: ', end='')
+        print(val)
 
-        if FILE_PATH_OPERATOR in userDir and os.path.isdir(userDir):
-            if (verify_arduino_directory(userDir)):
-                    return userDir  
+    print() # note: classes include structures
+    print('--- classes (list) ---')
+    for x in topology.classes:
+        print(x)
 
-        elif os.path.isdir(PATH_TO_GITHUB + userDir):
-            if (verify_arduino_directory(PATH_TO_GITHUB + userDir)):
-                return PATH_TO_GITHUB + userDir
+    print()
+    print('--- functions ---')
+    for x in topology.functions:
+        print(x['name'])
+
+    print()
+    print('--- variables ---')
+    for x in topology.variables:
+        print(x['name'])
+
+
+
+
+
+# ***********************************************************************************
+#
+# Main function
+#
+# ***********************************************************************************
+def main():
+    verboseprint("keywords_populator.py")
+
+    symbols = {
+        "KEYWORD1": [],
+        "KEYWORD2": [],
+        "KEYWORD3": [],
+        "LITERAL1": [],
+        "LITERAL2": [],
+    }
+
+    # use brace expansion to further extend the possibilities of pattern matching
+    matches = []
+    specs = list(expand(args.pathspec))
+    for spec in specs:
+        matches.extend(glob.glob(spec, recursive=args.recursive))
+
+    # handle all matches from the expansion / glob pattern
+    commonpath = None
+    for match in matches:
+        filepath = os.path.normpath(match)
+        if commonpath == None:
+            commonpath = filepath
         else:
-            error_out(0, libData)
+            commonpath = os.path.commonpath([commonpath, filepath])
+        abspath = os.path.abspath(filepath)
+        _, ext = os.path.splitext(filepath)
 
-    else:
-        if verify_arduino_directory(os.getcwd()): 
-            return os.getcwd() 
-        else:
-            error_out(0, libData)
+        # do not process non-header files
+        if ext != '.h' and ext != '.H':
+            verboseprint("ignoring non-header file: '" + filepath + "'" )
+            continue
 
-# This function retrieves the directory path to the source ("src") file in the
-# Arduino Library Directory.
-def get_path_to_src_dir(pPath):
+        # extract header topology
+        print("accumulating data from file: '" + filepath + "'")
+        topology = CppHeaderParser.CppHeader(abspath)
+
+        # accumulate defines
+        verboseprint('\tdefines:')
+        for constant in topology.defines:
+            name = constant.split(' ')[0]
+            symbols['LITERAL1'].append(name) # split on spaces and take the first portion // todo: optionally remove header guards from defines
+            verboseprint('\t\t', name)
+
+        # accumulate enums
+        verboseprint('\tenums:')
+        for enum in topology.enums:
+            symbols['KEYWORD1'].append(enum['name'])
+            verboseprint('\t\tname: ', enum['name'])
+            verboseprint('\t\tvalues: ')
+            for constant in enum['values']:
+                symbols['LITERAL1'].append(constant['name'])
+                verboseprint('\t\t\t', constant['name'])
+
+        # accumulate classes + structures
+        verboseprint('\tclasses + structs:')
+        for name, type in topology.classes.items():
+            verboseprint('\t\t', name)
+
+            # accumulate public class / struct methods
+            verboseprint('\t\t\tmethods:')
+            for method in type['methods']['public']: # 'protected' and 'private' also valid
+                symbols['KEYWORD2'].append(method['name'])
+                verboseprint('\t\t\t\t', method['name'])
     
-    for file in os.listdir(pPath):
-        if "src" in file:
-            return pPath + os.sep + file
-    
-    error_out(1, libData)
+            # accumulate class / struct properties
+            verboseprint('\t\t\tproperties:')
+            for property in type['properties']['public']: # 'protected' and 'private' also valid
+                symbols['LITERAL2'].append(property['name'])
+                verboseprint('\t\t\t\t', property['name'])
 
-# This function checks that the Arduino Library is "valid" by checking that
-# there is a "src" file in it. 
-def verify_arduino_directory(arPath):
-    for file in os.listdir(arPath):
-        if "src" in file:
-            return True
-    
-    error_out(2, libData)
-
-# This function retrieves the directory path to the header file.
-def get_path_to_header(sPath):
-
-    for file in os.listdir(sPath):
-        if file.endswith(".h"):
-            if(confirm_header_file(sPath + os.sep + file)):
-                return sPath + os.sep + file
+            # send class names to KEYWORD1
+            if(type['declaration_method'] == 'class'):
+                symbols['KEYWORD1'].append(name)
+                # todo: handle things that are specific to classes?
+                # todo: handle nested classes? (type['nested_classes']) (probably recursive...)
+                # todo: handle parents? (type['inherits']) (not recursive)
+                continue
             
-
-# This function confirms that there is a header file in teh Arduino Library 
-# folder.
-def confirm_header_file(fPath):
-    
-    with open(fPath, 'r') as h:
-        for line in h:
-            if "class" in line:
-                return True
-    
-    error_out(3, libData)
-                               
-# This function gets the name of the header file in the Arduino Library folder.
-def get_header_file_name(sPath):
-    
-    for file in os.listdir(sPath):
-        if file.endswith(".h"):
-            headerFile = file
-            return headerFile
-
-# This function gets the class name from the header file.        
-def get_class_name(headerPath):
-
-    with open(headerPath, 'r') as h: 
-        for line in h:
-            if "class" in line:
-                words = line.split(' ')
-                className = words[1] 
-                if "\n" in className:
-                    className = className.rstrip('\n')
-                return className
-    
-    error_out(4, libData)
-
-# This function gets the function names from the header file.        
-def get_functions(sPath, hName, cName, fList):
-   
-    os.chdir(sPath)
-
-    header = CppHeaderParser.CppHeader(hName)
-    classInfo = header.classes[cName]
-
-    for i in range(len(classInfo["methods"]["public"])):
-        funcName = classInfo["methods"]["public"][i]["name"]
-        if funcName == cName:
-            continue
-        elif funcName in fList:
-            continue
-        else:
-            fList.append(funcName)
-
-    if len(fList) == 0:
-        error_out(5, libData)
-    else:
-        return fList
-
-# This function gets the constants from the header file.        
-def get_constants_and_enums(sPath, hName, cList, eList):
-
-    os.chdir(sPath)
-
-    header = CppHeaderParser.CppHeader(hName)
-
-    # Ignore the protection define at the top of the list. 
-    for define in header.defines: 
-        if define.startswith("_"):
-            continue
-        cList.append(define.split(" ")[0])
-
-    # Gets each individual value within enum.
-    for i in range(len(header.enums)):
-        for x in range(len(header.enums[i]["values"])):
-            cList.append(header.enums[i]["values"][x]["name"])
-    
-    # Gets the type name of the enum.
-    for enum in header.enums:
-        eList.append(enum["name"])
-
-    if len(cList) == 0:
-        print("Didn't find any constants......no problemo, continuing.")
-    else:
-        return cList
-
-# This function checks if the keywords.txt file is already in the library file. 
-def check_if_keywords_exists(arPath):
-
-    for file in os.listdir(arPath):
-        if file == "keywords.txt":
-            print("Keywords.txt file found.")
-            return True
-
-    print("Existing Keywords.txt file not found, creating new one!")
-
-# This creates the file after all of the class names, functions, and constants
-# have been gathered.
-def format_keyword_file(lPath, cName, functions, constants, enums, hFile):
-
-    os.chdir(lPath)
-    exists = False
-    fExists = False
-    cExists = False
-    eExists = False
-    funcAppendList = list()
-    constAppendList = list()
-    enumAppendList = list()
-   
-    # This "if" statement checks for a "keywords.txt" file. If the file exists 
-    # then we take stock of what functions and constants are already there, and
-    # only add the ones that are not. 
-    print("Checking if keywords.txt already exists.")
-    if check_if_keywords_exists(lPath):
-        # Check for class name first -> that's KEYWORD1
-        with open("keywords.txt", 'a+') as k:
-            k.seek(0)
-            for line in k:
-                if cName in line:
-                    exists = True
-                    break
-
-            if exists == False:
-                k.seek(0)
-                k.write("Class {} \n".format(STRING_FLAIR))
-                k.write("{}\tKEYWORD1\n".format(cName))
-         
-        with open("keywords.txt", 'r') as k:
-            # Check for functions next -> KEYWORD2
-            for function in functions:
-                fExists = False
-                k.seek(0)
-                for line in k:
-                    if function in line:
-                        fExists = True
-                        break
-                
-                if fExists == True:
-                   continue 
-                else:
-                    funcAppendList.append(function)
-                    fExists = False
-
-            # Check for constants next -> LITERAL1
-            for constant in constants:
-                cExists = False
-                k.seek(0)
-                for line in k:
-                    if constant in line:
-                        cExists = True
-                        break
-                
-                if cExists == True:
-                   continue 
-                else:
-                    constAppendList.append(constant)
-                    cExists = False
-
-            # Check for enum last -> KEYWORD1
-            for enum in enums:
-                eExists = False
-                k.seek(0)
-                for line in k:
-                    if enum in line:
-                        eExists = True
-                        break
-                
-                if eExists == True:
-                   continue 
-                else:
-                    enumAppendList.append(enum)
-                    eExists = False
-       
-        #The lists of missing items is ready, now they are appended to file. 
-        if len(funcAppendList) == 0:
-            error_out(6, libData)
-        else:
-            with open("keywords.txt", 'a') as k:
-                for function in funcAppendList:
-                    k.write("{}\tKEYWORD2\n".format(function))
-                for constant in constAppendList:
-                    k.write("{}\LITERAL1\n".format(constant))
-                for enum in enumAppendList:
-                    k.write("{}\tKEYWORD1\n".format(enum))
-
-
-    
-    #If the file does not exist (easy), just make a file with the goods. 
-    else:
-        print("New keywords.txt file created.")
-        with open("keywords.txt", 'w') as k:
-            k.write("{}\nCLASS\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
-            k.write("{}\tKEYWORD1\n".format(cName))
-            k.write("\n{}\nFUNCTIONS\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
-            for function in functions: 
-                k.write("{}\tKEYWORD2\n".format(function))
-            k.write("\n{}\nCONSTANTS\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
-            for constant in constants: 
-                k.write("{}\tLITERAL1\n".format(constant))
-            k.write("\n{}\nDATA TYPES\n{}\n".format(STRING_FLAIR, STRING_FLAIR))
-            for enum in enums: 
-                k.write("{}\tKEYWORD1\n".format(enum))
+            # send struct names to KEYWORD3
+            if(type['declaration_method'] == 'struct'):
+                symbols['KEYWORD3'].append(name)
+                continue
             
+            # warn if we can't distinguish between class and struct
+            raise(Exception("unknown declration method in type: '" + name + "'"))
+        
+        # accumulate functions
+        verboseprint('\tfunctions:')
+        for function in topology.functions:
+            symbols['KEYWORD2'].append(function['name'])
+            verboseprint('\t\t', function['name'])
+
+        # accumulate variables
+        verboseprint('\tvariables:')
+        for variable in topology.variables:
+            symbols['LITERAL2'].append(variable['name'])
+            verboseprint('\t\t', variable['name'])
+
+    # deduplicate symbols (https://www.w3schools.com/python/python_howto_remove_duplicates.asp)
+    for label, entries in symbols.items():
+        symbols[label] = list(dict.fromkeys(entries))
+
+    # check if there is any content to actually write
+    content = False
+    try:
+        for label, entries in symbols.items():
+            if len(symbols[label]):
+                content = True
+                break
+        if not content:
+            raise(Warning('No content exists - keywords file will not be generated'))
+    except Warning as w:
+        print('warning! ' + str(w))
+        print('exiting')
+        exit()
+
+    # determine the output filepath
+    outpath = args.dest
+    if args.dest == None:
+        outpath = os.path.dirname(commonpath)
+        print("no destination specified, falling back to common path from glob pattern: '" + commonpath + "'")
+        if commonpath == None or commonpath == '':
+            outpath = '.'
+            print('no common path found, falling back to current directory')
+
+    outfile = os.path.normpath(outpath + '/keywords.txt')
+    print(outfile)
+
+    # use accumulated symbols to build keywords file
+    with open(outfile, 'w') as fout:
+        fout.write("# Syntax Coloring Map For '" + outpath + "'\n")
+        
+        fout.write('\n# Datatypes (KEYWORD1)\n')
+        for name in symbols['KEYWORD1']:
+            fout.write(name + '\tKEYWORD1\n')
+        
+        fout.write('\n# Functions (KEYWORD2)\n')
+        for name in symbols['KEYWORD2']:
+            fout.write(name + '\tKEYWORD2\n')
+
+        fout.write('\n# Structures (KEYWORD3)\n')
+        for name in symbols['KEYWORD3']:
+            fout.write(name + '\tKEYWORD3\n')
+
+        fout.write('\n# Constants (LITERAL1)\n')
+        for name in symbols['LITERAL1']:
+            fout.write(name + '\tLITERAL1\n')
+
+        fout.write('\n# Properties (LITERAL2)\n')
+        for name in symbols['LITERAL2']:
+            fout.write(name + '\tLITERAL2\n')
+
+    exit()
 
 
-# This creates a new keywords file from the given ,or not given, directory
-# path. 
-def create_keyword_file(lData):
+# ******************************************************************************
+#
+# Main program flow
+#
+# ******************************************************************************
+if __name__ == '__main__':
 
-    ardPath = get_path_to_arduino_dir()
-    libData["Arduino Path"] = ardPath
-    srcPath = get_path_to_src_dir(ardPath)
-    libData["Source Path"] = srcPath 
+    parser = argparse.ArgumentParser(
+        description='Utility to update keyword files for the Apollo3 Arduino core')
 
-    print("Arduino Library Path:\n{}\nPath to Source File:\
-          \n{}\n{}\n".format(ardPath, srcPath, SEPERATOR))
+    parser.add_argument('-p', '--pathspec', dest='pathspec', default='./*/*', required=False, help='glob pathspec to the file or directory from which to generate keywords (see python glob module)')
+    parser.add_argument('-d', '--dest', dest='dest', required=False, help='an optional path to the output location - uses path dirname if not specified')
+    parser.add_argument('-r', '--recursive', default=0, help='handle path recursively', action='store_true')
+    parser.add_argument('-v', '--verbose', default=0, help='enable verbose output', action='store_true')
 
-    headerFilePath = get_path_to_header(srcPath)
-    libData["Header Path"] = headerFilePath 
-    headerFile = get_header_file_name(srcPath)
-    libData["Header File"] = headerFile 
+    args = parser.parse_args()
 
-    print("Header File Path:\n{}\n{}\nHeader File Name:\
-          \n{}\n{}".format(headerFilePath, SEPERATOR, headerFile, SEPERATOR))
+    # Create print function for verbose output if caller deems it: https://stackoverflow.com/questions/5980042/how-to-implement-the-verbose-or-v-option-into-a-script
+    if args.verbose:
+        def verboseprint(*args):
+            # Print each argument separately so caller doesn't need to
+            # stuff everything to be printed into a single string
+            for arg in args:
+                print(arg, end='', flush=True)
+            print()
+    else:
+        verboseprint = lambda *a: None      # do-nothing function
 
-    className = get_class_name(headerFilePath)
-    libData["Class Name"] = className 
+    def twopartprint(verbosestr, printstr):
+        if args.verbose:
+            print(verbosestr, end = '')
 
-    print("Class name:\n{}\n{}".format(className, SEPERATOR))
+        print(printstr)
 
-    print("Getting Functions....")
-    functionList = list()
-    get_functions(srcPath, headerFilePath, className, functionList)
-    print("Functions gathered.\n{}".format(SEPERATOR))
-
-    print("Getting Literals....") 
-    constantList = list();
-    enumList = list()
-    get_constants_and_enums(srcPath, headerFilePath, constantList, enumList)
-    print("Constants gathered.\n{}".format(SEPERATOR))
-    
-    print("Creating Keyword File.")
-    format_keyword_file(ardPath, className, functionList, constantList,
-                        enumList, headerFile)
-
-
-
-
-
-
-
-#-----------------End of Functions----------------------------------------
-
-
-
-
-
-print("\n{}\nArduino Keywords.txt File Creator\n{}\n".format(STRING_FLAIR,
-                                                             STRING_FLAIR))
-create_keyword_file(libData)
-print("\n{}\n Keywords.txt Ready\n{}\n".format(SUCCESS_FLAIR, SUCCESS_FLAIR))
+    main()
