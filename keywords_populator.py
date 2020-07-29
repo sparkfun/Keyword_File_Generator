@@ -62,7 +62,7 @@ def cpp_header_example_usage(headerpath):
 #
 # ***********************************************************************************
 def main():
-    print("keywords_populator.py")
+    verboseprint("keywords_populator.py")
 
     symbols = {
         "KEYWORD1": [],
@@ -86,7 +86,7 @@ def main():
 
         # do not process non-header files
         if ext != '.h':
-            print("ignoring non-header file: '" + filepath + "'" )
+            verboseprint("ignoring non-header file: '" + filepath + "'" )
             continue
 
         # extract header topology
@@ -94,25 +94,38 @@ def main():
         topology = CppHeaderParser.CppHeader(abspath)
 
         # accumulate defines
+        verboseprint('\tdefines:')
         for constant in topology.defines:
-            symbols['LITERAL1'].append(constant.split(' ')[0]) # split on spaces and take the first portion // todo: optionally remove header guards from defines
+            name = constant.split(' ')[0]
+            symbols['LITERAL1'].append(name) # split on spaces and take the first portion // todo: optionally remove header guards from defines
+            verboseprint('\t\t', name)
 
         # accumulate enums
+        verboseprint('\tenums:')
         for enum in topology.enums:
             symbols['KEYWORD1'].append(enum['name'])
+            verboseprint('\t\tname: ', enum['name'])
+            verboseprint('\t\tvalues: ')
             for constant in enum['values']:
                 symbols['LITERAL1'].append(constant['name'])
+                verboseprint('\t\t\t', constant['name'])
 
         # accumulate classes + structures
+        verboseprint('\tclasses + structs:')
         for name, type in topology.classes.items():
+            verboseprint('\t\t', name)
 
             # accumulate public class / struct methods
+            verboseprint('\t\t\tmethods:')
             for method in type['methods']['public']: # 'protected' and 'private' also valid
                 symbols['KEYWORD2'].append(method['name'])
+                verboseprint('\t\t\t\t', method['name'])
     
             # accumulate class / struct properties
+            verboseprint('\t\t\tproperties:')
             for property in type['properties']['public']: # 'protected' and 'private' also valid
                 symbols['LITERAL2'].append(property['name'])
+                verboseprint('\t\t\t\t', property['name'])
 
             # send class names to KEYWORD1
             if(type['declaration_method'] == 'class'):
@@ -131,12 +144,16 @@ def main():
             raise(Exception("unknown declration method in type: '" + name + "'"))
         
         # accumulate functions
+        verboseprint('\tfunctions:')
         for function in topology.functions:
             symbols['KEYWORD2'].append(function['name'])
+            verboseprint('\t\t', function['name'])
 
         # accumulate variables
+        verboseprint('\tvariables:')
         for variable in topology.variables:
             symbols['LITERAL2'].append(variable['name'])
+            verboseprint('\t\t', variable['name'])
 
     # deduplicate symbols (https://www.w3schools.com/python/python_howto_remove_duplicates.asp)
     for label, entries in symbols.items():
