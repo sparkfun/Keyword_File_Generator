@@ -142,19 +142,31 @@ def main():
     for label, entries in symbols.items():
         symbols[label] = list(dict.fromkeys(entries))
 
+    # check if there is any content to actually write
+    content = False
+    try:
+        for label, entries in symbols.items():
+            if len(symbols[label]):
+                content = True
+                break
+        if not content:
+            raise(Warning('No content exists - keywords file will not be generated'))
+    except Warning as w:
+        print('warning! ' + str(w))
+        print('exiting')
+        exit()
+
     # determine the output filepath
     outpath = args.dest
-    try:
-        if args.dest == None:
-            outpath = commonpath
-            raise(Warning("no destination specified, falling back to common path from glob pattern: '" + commonpath + "'"))
-            if commonpath == None or commonpath == '':
-                raise(Exception('could not determine keyword file destination - please specify a location with the -d flag'))
-    except Warning as w:
-        print('Warning!: ' + str(w))
+    if args.dest == None:
+        outpath = os.path.dirname(commonpath)
+        print("no destination specified, falling back to common path from glob pattern: '" + commonpath + "'")
+        if commonpath == None or commonpath == '':
+            outpath = '.'
+            print('no common path found, falling back to current directory')
 
-    outpath = os.path.dirname(outpath)
     outfile = os.path.normpath(outpath + '/keywords.txt')
+    print(outfile)
 
     # use accumulated symbols to build keywords file
     with open(outfile, 'w') as fout:
@@ -193,7 +205,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(
         description='Utility to update keyword files for the Apollo3 Arduino core')
 
-    parser.add_argument('-p', '--pathspec', dest='pathspec', default='.', required=False, help='glob pathspec to the file or directory from which to generate keywords (see python glob module)')
+    parser.add_argument('-p', '--pathspec', dest='pathspec', default='./*/*', required=False, help='glob pathspec to the file or directory from which to generate keywords (see python glob module)')
     parser.add_argument('-d', '--dest', dest='dest', required=False, help='an optional path to the output location - uses path dirname if not specified')
     parser.add_argument('-r', '--recursive', default=0, help='handle path recursively', action='store_true')
     parser.add_argument('-v', '--verbose', default=0, help='enable verbose output', action='store_true')
