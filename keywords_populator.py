@@ -268,7 +268,7 @@ def format_keyword_file(lPath, cName, functions, constants, enums, hFile):
                 for function in funcAppendList:
                     k.write("{}\tKEYWORD2\n".format(function))
                 for constant in constAppendList:
-                    k.write("{}\LITERAL1\n".format(constant))
+                    k.write("{}\tLITERAL1\n".format(constant))
                 for enum in enumAppendList:
                     k.write("{}\tKEYWORD1\n".format(enum))
 
