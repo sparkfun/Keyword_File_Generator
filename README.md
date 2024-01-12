@@ -1,18 +1,20 @@
 Keyword File Genertor
 =====================
 This Python 3 script will generate an Arduino Keyword File from a header
-file. All that's needed is the following library _CppHeaderParser_. Run the
-script from the command line following the instructions below will create a
+file. First [install the required Python packages](#installing-requirements), then [run the
+script from the command line](#usage). Voila, you now have a
 keywords file like the one pictured. 
 
 
 ![Keyword Success!](https://github.com/sparkfun/Keyword_File_Generator/blob/master/Readme%20Images/Keywords%20created!.JPG)
 
-Installing Required Library 
+Installing Requirements
 ====================
-* **CppHeaderParser** :  _pip install CppHeaderParser_
+You can install required Python packages by running this command from the repo root:
 
-Instructions
+```pip install -r requirements.txt```
+
+Usage
 ====================
 
 To generate your "keywords.txt" file, give the path of 
